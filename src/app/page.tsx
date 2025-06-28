@@ -1,4 +1,5 @@
-'use client';
+// updated version of StudyPlacePage with buildings as tabs and floors as radio group
+"use client";
 
 import * as React from 'react';
 import { useState, useMemo, useEffect } from 'react';
@@ -10,28 +11,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { BookingModal } from '@/components/booking-modal';
-import { BookMarked, Armchair, Users, Building, ChevronRight, QrCode, Loader2 } from 'lucide-react';
+import { BookMarked, Armchair, Users, Building as BuildingIcon, ChevronRight, QrCode, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const SeatComponent = ({
-  seat,
-  onClick,
-}: {
-  seat: Seat;
-  onClick: (seat: Seat) => void;
-}) => {
+const SeatComponent = ({ seat, onClick }: { seat: Seat; onClick: (seat: Seat) => void; }) => {
   const seatColor = useMemo(() => {
     switch (seat.status) {
-      case 'free':
-        return 'bg-green-500 hover:bg-green-400';
-      case 'occupied':
-        return 'bg-red-500 cursor-not-allowed';
-      case 'reserved':
-        return 'bg-yellow-500 cursor-not-allowed';
-      default:
-        return 'bg-gray-500';
+      case 'free': return 'bg-green-500 hover:bg-green-400';
+      case 'occupied': return 'bg-red-500 cursor-not-allowed';
+      default: return 'bg-gray-500';
     }
   }, [seat.status]);
 
@@ -50,10 +41,7 @@ const SeatComponent = ({
   );
 
   if (seat.status !== 'free') {
-    const reservationInfo =
-      seat.status === 'occupied'
-        ? `Occupied by ${seat.user}`
-        : `Reserved by ${seat.user}`;
+    const reservationInfo = `Occupied by ${seat.user}`;
     const timeInfo = seat.reservedUntil ? ` until ${new Date(seat.reservedUntil).toLocaleTimeString()}` : '';
 
     return (
@@ -70,30 +58,30 @@ const SeatComponent = ({
 };
 
 export default function StudyPlacePage() {
-  const { floors, bookSeat, loading } = useAppData();
+  const { buildings, bookSeat, loading } = useAppData();
+  const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);
   const [selectedFloorId, setSelectedFloorId] = useState<string | null>(null);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [bookingSeat, setBookingSeat] = useState<Seat | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (!loading && floors.length > 0 && !selectedFloorId) {
-      setSelectedFloorId(floors[0].id);
-      setSelectedRoomId(floors[0].rooms[0].id);
-    }
-  }, [loading, floors, selectedFloorId]);
+  const selectedBuilding = useMemo(() => buildings.find(b => b.id === selectedBuildingId), [buildings, selectedBuildingId]);
+  const selectedFloor = useMemo(() => selectedBuilding?.floors.find(f => f.id === selectedFloorId), [selectedBuilding, selectedFloorId]);
+  const selectedRoom = useMemo(() => selectedFloor?.rooms.find(r => r.id === selectedRoomId), [selectedFloor, selectedRoomId]);
 
-  const selectedFloor = useMemo(() => floors.find((f) => f.id === selectedFloorId), [floors, selectedFloorId]);
-  const selectedRoom = useMemo(() => selectedFloor?.rooms.find((r) => r.id === selectedRoomId), [selectedFloor, selectedRoomId]);
+  useEffect(() => {
+    if (!loading && buildings.length > 0 && !selectedBuildingId) {
+      const b = buildings[0];
+      setSelectedBuildingId(b.id);
+      setSelectedFloorId(b.floors[0]?.id || null);
+      setSelectedRoomId(b.floors[0]?.rooms[0]?.id || null);
+    }
+  }, [loading, buildings, selectedBuildingId]);
 
   const handleFloorChange = (floorId: string) => {
     setSelectedFloorId(floorId);
-    const newFloor = floors.find(f => f.id === floorId);
-    if (newFloor && newFloor.rooms.length > 0) {
-      setSelectedRoomId(newFloor.rooms[0].id);
-    } else {
-      setSelectedRoomId(null);
-    }
+    const floor = selectedBuilding?.floors.find(f => f.id === floorId);
+    setSelectedRoomId(floor?.rooms[0]?.id || null);
   };
 
   const handleSeatClick = (seat: Seat) => {
@@ -103,8 +91,8 @@ export default function StudyPlacePage() {
   };
 
   const handleBookSeat = (seatToBook: Seat) => {
-    if (!selectedRoomId || !selectedFloorId) return;
-    bookSeat(seatToBook, selectedRoomId, selectedFloorId);
+    if (!selectedRoomId || !selectedFloorId || !selectedBuildingId) return;
+    bookSeat(seatToBook, selectedRoomId, selectedFloorId, selectedBuildingId);
     toast({
       title: "Seat Reserved!",
       description: `You have successfully reserved seat ${seatToBook.id}.`,
@@ -157,18 +145,56 @@ export default function StudyPlacePage() {
 
         <main className="flex-1 p-4 sm:p-6 md:p-8 space-y-8">
           <section>
-            <h2 className="text-2xl font-headline mb-4">Select a Floor</h2>
-            <Tabs value={selectedFloorId || ''} onValueChange={handleFloorChange}>
-              <TabsList>
-                {floors.map((floor) => (
-                  <TabsTrigger key={floor.id} value={floor.id} className="gap-2">
-                    <Building className="h-4 w-4" />
-                    {floor.name}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+            <h2 className="text-2xl font-headline mb-4">Select a Building</h2>
+            <div className="flex gap-4 flex-wrap">
+              {buildings.map((building) => (
+                <Button
+                  key={building.id}
+                  variant={building.id === selectedBuildingId ? 'default' : 'outline'}
+                  onClick={() => {
+                    setSelectedBuildingId(building.id);
+                    setSelectedFloorId(building.floors[0]?.id || null);
+                    setSelectedRoomId(building.floors[0]?.rooms[0]?.id || null);
+                  }}
+                >
+                  <BuildingIcon className="h-4 w-4 mr-2" /> {building.name}
+                </Button>
+              ))}
+            </div>
           </section>
+
+          {selectedBuilding && (
+            <section>
+              <h2 className="text-xl font-headline mt-6 mb-2">Select a Floor</h2>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={selectedBuilding.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex gap-2 overflow-x-auto scrollbar-hide pb-1"
+                >
+                  {selectedBuilding.floors.map((floor) => (
+                    <motion.button
+                      key={floor.id}
+                      onClick={() => handleFloorChange(floor.id)}
+                      whileTap={{ scale: 0.95 }}
+                      className={cn(
+                        'whitespace-nowrap px-4 py-1 rounded-full border text-sm transition-colors',
+                        floor.id === selectedFloorId
+                          ? 'bg-primary text-white border-primary'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/70 border-border'
+                      )}
+                    >
+                      {floor.name}
+                    </motion.button>
+                  ))}
+                </motion.div>
+              </AnimatePresence>
+            </section>
+          )}
+
 
           {selectedFloor && (
             <section>
@@ -179,9 +205,7 @@ export default function StudyPlacePage() {
                     key={room.id}
                     className={cn(
                       'cursor-pointer transition-all duration-300',
-                      selectedRoomId === room.id
-                        ? 'border-primary ring-2 ring-primary shadow-lg'
-                        : 'hover:border-primary/50'
+                      selectedRoomId === room.id ? 'border-primary ring-2 ring-primary shadow-lg' : 'hover:border-primary/50'
                     )}
                     onClick={() => setSelectedRoomId(room.id)}
                   >
@@ -217,13 +241,13 @@ export default function StudyPlacePage() {
                         const seat = selectedRoom.seats.find(s => s.id === el.id);
                         return seat ? (
                           <div key={el.id} style={{ gridColumn: el.pos.x, gridRow: el.pos.y }}>
-                             <SeatComponent seat={seat} onClick={handleSeatClick} />
+                            <SeatComponent seat={seat} onClick={handleSeatClick} />
                           </div>
                         ) : null;
                       }
                       if (el.type === 'table') {
                         return (
-                           <div key={`table-${index}`} className="bg-muted/40 rounded-md flex items-center justify-center text-xs text-muted-foreground" style={{ gridColumn: `${el.pos.x} / span ${el.size.w}`, gridRow: `${el.pos.y} / span ${el.size.h}`}}>
+                          <div key={`table-${index}`} className="bg-muted/40 rounded-md flex items-center justify-center text-xs text-muted-foreground" style={{ gridColumn: `${el.pos.x} / span ${el.size.w}`, gridRow: `${el.pos.y} / span ${el.size.h}`}}>
                             Table
                           </div>
                         )
@@ -236,7 +260,7 @@ export default function StudyPlacePage() {
             </Card>
           )}
         </main>
-        
+
         <BookingModal
           isOpen={!!bookingSeat}
           onOpenChange={(open) => !open && setBookingSeat(null)}
