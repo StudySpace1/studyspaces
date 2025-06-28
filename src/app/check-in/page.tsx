@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { QrCode, ArrowLeft, Loader2 } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function CheckInPage() {
   const { checkInSeat } = useAppData();
@@ -90,12 +91,15 @@ export default function CheckInPage() {
           <QrCode className="h-8 w-8 text-primary" />
           <h1 className="text-3xl font-headline text-primary">Check-in</h1>
         </div>
-         <Link href="/" passHref>
-            <Button variant="outline">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to map
-            </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/" passHref>
+              <Button variant="outline">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to map
+              </Button>
+          </Link>
+          <ThemeToggle />
+        </div>
       </header>
       <main className="flex-1 p-4 sm:p-6 md:p-8 flex items-center justify-center">
         <Card className="w-full max-w-md">

@@ -13,6 +13,7 @@ import { BookingModal } from '@/components/booking-modal';
 import { BookMarked, Armchair, Users, Building, ChevronRight, QrCode, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 const SeatComponent = ({
   seat,
@@ -118,12 +119,15 @@ export default function StudyPlacePage() {
             <BookMarked className="h-8 w-8 text-primary" />
             <h1 className="text-3xl font-headline text-primary">StudyPlace</h1>
           </div>
-           <Link href="/check-in" passHref>
-            <Button variant="outline">
-              <QrCode className="mr-2 h-4 w-4" />
-              Check-in
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/check-in" passHref>
+              <Button variant="outline">
+                <QrCode className="mr-2 h-4 w-4" />
+                Check-in
+              </Button>
+            </Link>
+            <ThemeToggle />
+          </div>
         </header>
         <main className="flex flex-1 items-center justify-center">
           <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -140,12 +144,15 @@ export default function StudyPlacePage() {
             <BookMarked className="h-8 w-8 text-primary" />
             <h1 className="text-3xl font-headline text-primary">StudyPlace</h1>
           </div>
-          <Link href="/check-in" passHref>
-            <Button variant="outline">
-              <QrCode className="mr-2 h-4 w-4" />
-              Check-in
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/check-in" passHref>
+              <Button variant="outline">
+                <QrCode className="mr-2 h-4 w-4" />
+                Check-in
+              </Button>
+            </Link>
+            <ThemeToggle />
+          </div>
         </header>
 
         <main className="flex-1 p-4 sm:p-6 md:p-8 space-y-8">
