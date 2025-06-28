@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useAppData } from '@/context/AppDataContext';
 import { type Seat } from '@/lib/data';
@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { BookingModal } from '@/components/booking-modal';
-import { BookMarked, Armchair, Users, Building, ChevronRight, QrCode } from 'lucide-react';
+import { BookMarked, Armchair, Users, Building, ChevronRight, QrCode, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -53,7 +53,7 @@ const SeatComponent = ({
       seat.status === 'occupied'
         ? `Occupied by ${seat.user}`
         : `Reserved by ${seat.user}`;
-    const timeInfo = seat.reservedUntil ? ` until ${seat.reservedUntil.toLocaleTimeString()}` : '';
+    const timeInfo = seat.reservedUntil ? ` until ${new Date(seat.reservedUntil).toLocaleTimeString()}` : '';
 
     return (
       <Tooltip>
@@ -69,11 +69,18 @@ const SeatComponent = ({
 };
 
 export default function StudyPlacePage() {
-  const { floors, bookSeat } = useAppData();
-  const [selectedFloorId, setSelectedFloorId] = useState<string>(floors[0].id);
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(floors[0].rooms[0].id);
+  const { floors, bookSeat, loading } = useAppData();
+  const [selectedFloorId, setSelectedFloorId] = useState<string | null>(null);
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [bookingSeat, setBookingSeat] = useState<Seat | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!loading && floors.length > 0 && !selectedFloorId) {
+      setSelectedFloorId(floors[0].id);
+      setSelectedRoomId(floors[0].rooms[0].id);
+    }
+  }, [loading, floors, selectedFloorId]);
 
   const selectedFloor = useMemo(() => floors.find((f) => f.id === selectedFloorId), [floors, selectedFloorId]);
   const selectedRoom = useMemo(() => selectedFloor?.rooms.find((r) => r.id === selectedRoomId), [selectedFloor, selectedRoomId]);
@@ -95,13 +102,35 @@ export default function StudyPlacePage() {
   };
 
   const handleBookSeat = (seatToBook: Seat) => {
-    if (!selectedRoomId) return;
-    bookSeat(seatToBook, selectedRoomId);
+    if (!selectedRoomId || !selectedFloorId) return;
+    bookSeat(seatToBook, selectedRoomId, selectedFloorId);
     toast({
       title: "Seat Reserved!",
       description: `You have successfully reserved seat ${seatToBook.id}.`,
     });
   };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-background text-foreground">
+        <header className="flex items-center justify-between p-4 border-b border-border">
+          <div className="flex items-center gap-4">
+            <BookMarked className="h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-headline text-primary">StudyPlace</h1>
+          </div>
+           <Link href="/check-in" passHref>
+            <Button variant="outline">
+              <QrCode className="mr-2 h-4 w-4" />
+              Check-in
+            </Button>
+          </Link>
+        </header>
+        <main className="flex flex-1 items-center justify-center">
+          <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <TooltipProvider>
@@ -122,7 +151,7 @@ export default function StudyPlacePage() {
         <main className="flex-1 p-4 sm:p-6 md:p-8 space-y-8">
           <section>
             <h2 className="text-2xl font-headline mb-4">Select a Floor</h2>
-            <Tabs value={selectedFloorId} onValueChange={handleFloorChange}>
+            <Tabs value={selectedFloorId || ''} onValueChange={handleFloorChange}>
               <TabsList>
                 {floors.map((floor) => (
                   <TabsTrigger key={floor.id} value={floor.id} className="gap-2">

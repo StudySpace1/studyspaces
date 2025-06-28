@@ -1,77 +1,139 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { ref, onValue, get, update } from 'firebase/database';
+import { database, isFirebaseConfigured } from '@/lib/firebase';
 import { initialData, type Floor, type Seat } from '@/lib/data';
+import { useToast } from '@/hooks/use-toast';
 
 interface AppDataContextType {
   floors: Floor[];
-  bookSeat: (seatToBook: Seat, roomId: string) => void;
-  checkInSeat: (seatId: string, roomId: string, floorId: string) => boolean;
+  loading: boolean;
+  bookSeat: (seatToBook: Seat, roomId: string, floorId: string) => void;
+  checkInSeat: (seatId: string, roomId: string, floorId: string) => Promise<boolean>;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
 
 export const AppDataProvider = ({ children }: { children: ReactNode }) => {
-  const [floors, setFloors] = useState<Floor[]>(initialData);
+  const [floors, setFloors] = useState<Floor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  const bookSeat = (seatToBook: Seat, roomId: string) => {
-    const newFloors = floors.map((floor) => ({
-      ...floor,
-      rooms: floor.rooms.map((room) => {
-        if (room.id === roomId) {
-          return {
-            ...room,
-            seats: room.seats.map((seat) => {
-              if (seat.id === seatToBook.id) {
-                return {
-                  ...seat,
-                  status: 'reserved' as const,
-                  user: 'You',
-                  reservedUntil: new Date(new Date().getTime() + 2 * 60 * 60 * 1000), // 2 hours from now
-                };
-              }
-              return seat;
-            }),
-          };
+  useEffect(() => {
+    if (isFirebaseConfigured && database) {
+      const floorsRef = ref(database, 'floors/');
+      
+      const unsubscribe = onValue(floorsRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const processedData = data.map((floor: any) => ({
+            ...floor,
+            rooms: floor.rooms.map((room: any) => ({
+              ...room,
+              seats: room.seats.map((seat: any) => ({
+                ...seat,
+                reservedUntil: seat.reservedUntil ? new Date(seat.reservedUntil) : undefined,
+              })),
+            })),
+          }));
+          setFloors(processedData);
+        } else {
+          // If no data, seed the database with initial data
+          update(ref(database), { 'floors': initialData });
         }
-        return room;
-      }),
-    }));
-    setFloors(newFloors);
+        setLoading(false);
+      }, (error) => {
+        console.error("Firebase read failed:", error);
+        toast({
+          variant: "destructive",
+          title: "Firebase Error",
+          description: "Could not connect to the database. Using local data.",
+        });
+        setFloors(initialData);
+        setLoading(false);
+      });
+
+      return () => unsubscribe();
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Firebase Not Configured",
+        description: "Using local data. Set up .env.local to enable real-time features.",
+        duration: 9000,
+      });
+      setFloors(initialData);
+      setLoading(false);
+    }
+  }, [toast]);
+
+  const findSeatPath = (floorId: string, roomId: string, seatId: string) => {
+    const floorIndex = floors.findIndex((f) => f.id === floorId);
+    if (floorIndex === -1) return null;
+
+    const roomIndex = floors[floorIndex].rooms.findIndex((r) => r.id === roomId);
+    if (roomIndex === -1) return null;
+
+    const seatIndex = floors[floorIndex].rooms[roomIndex].seats.findIndex((s) => s.id === seatId);
+    if (seatIndex === -1) return null;
+
+    return `floors/${floorIndex}/rooms/${roomIndex}/seats/${seatIndex}`;
   };
 
-  const checkInSeat = (seatId: string, roomId: string, floorId: string): boolean => {
-    let seatFoundAndUpdated = false;
-    const newFloors = floors.map((floor) => {
-      if (floor.id === floorId) {
-        return {
-          ...floor,
-          rooms: floor.rooms.map((room) => {
-            if (room.id === roomId) {
-              const newSeats = room.seats.map((seat) => {
-                if (seat.id === seatId && seat.status === 'reserved' && seat.user === 'You') {
-                   seatFoundAndUpdated = true;
-                   return { ...seat, status: 'occupied' as const, reservedUntil: undefined };
-                }
-                return seat;
-              });
-              return {...room, seats: newSeats};
-            }
-            return room;
-          }),
-        };
-      }
-      return floor;
-    });
-
-    if (seatFoundAndUpdated) {
-      setFloors(newFloors);
+  const bookSeat = (seatToBook: Seat, roomId: string, floorId: string) => {
+    if (!isFirebaseConfigured || !database) {
+      toast({
+        variant: "destructive",
+        title: "Feature Disabled",
+        description: "Please configure Firebase to book seats.",
+      });
+      return;
     }
-    return seatFoundAndUpdated;
+
+    const seatPath = findSeatPath(floorId, roomId, seatToBook.id);
+    if (!seatPath) return;
+
+    const reservedUntil = new Date(new Date().getTime() + 2 * 60 * 60 * 1000); // 2 hours from now
+    
+    const updates: { [key: string]: any } = {};
+    updates[`${seatPath}/status`] = 'reserved';
+    updates[`${seatPath}/user`] = 'You';
+    updates[`${seatPath}/reservedUntil`] = reservedUntil.toISOString();
+
+    update(ref(database), updates);
+  };
+
+  const checkInSeat = async (seatId: string, roomId: string, floorId: string): Promise<boolean> => {
+    if (!isFirebaseConfigured || !database) {
+      toast({
+        variant: "destructive",
+        title: "Feature Disabled",
+        description: "Please configure Firebase to check in.",
+      });
+      return false;
+    }
+
+    const seatPath = findSeatPath(floorId, roomId, seatId);
+    if (!seatPath) return false;
+
+    const seatRef = ref(database, seatPath);
+    const snapshot = await get(seatRef);
+
+    if (snapshot.exists()) {
+      const seat = snapshot.val();
+      if (seat.status === 'reserved' && seat.user === 'You') {
+        const updates: { [key: string]: any } = {};
+        updates[`${seatPath}/status`] = 'occupied';
+        updates[`${seatPath}/reservedUntil`] = null;
+        await update(ref(database), updates);
+        return true;
+      }
+    }
+    return false;
   };
 
   return (
-    <AppDataContext.Provider value={{ floors, bookSeat, checkInSeat }}>
+    <AppDataContext.Provider value={{ floors, loading, bookSeat, checkInSeat }}>
       {children}
     </AppDataContext.Provider>
   );

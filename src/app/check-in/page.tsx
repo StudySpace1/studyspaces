@@ -47,14 +47,14 @@ export default function CheckInPage() {
     };
   }, [showScanner]);
 
-  const handleScan = (data: string) => {
+  const handleScan = async (data: string) => {
     if (data) {
       try {
         const parsed = JSON.parse(data);
         const { seatId, roomId, floorId } = parsed;
 
         if (seatId && roomId && floorId) {
-          const success = checkInSeat(seatId, roomId, floorId);
+          const success = await checkInSeat(seatId, roomId, floorId);
           if (success) {
             toast({
               title: 'Check-in Successful!',
