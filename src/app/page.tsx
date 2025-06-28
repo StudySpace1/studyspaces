@@ -105,7 +105,7 @@ export default function StudyPlacePage() {
         <header className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-4">
             <BookMarked className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl font-headline text-primary">StudyPlace</h1>
+            <h1 className="text-3xl font-headline text-primary">StudySpaces</h1>
           </div>
           <div className="flex items-center gap-2">
             <Link href="/check-in" passHref>
@@ -130,7 +130,7 @@ export default function StudyPlacePage() {
         <header className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-4">
             <BookMarked className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl font-headline text-primary">StudyPlace</h1>
+            <h1 className="text-3xl font-headline text-primary">StudySpaces</h1>
           </div>
           <div className="flex items-center gap-2">
             <Link href="/check-in" passHref>
