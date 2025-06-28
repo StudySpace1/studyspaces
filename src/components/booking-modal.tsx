@@ -19,7 +19,9 @@ interface BookingModalProps {
   onOpenChange: (open: boolean) => void;
   seat: Seat | null;
   roomName: string;
+  roomId: string;
   floorName: string;
+  floorId: string;
   onBookSeat: (seat: Seat) => void;
 }
 
@@ -28,7 +30,9 @@ export function BookingModal({
   onOpenChange,
   seat,
   roomName,
+  roomId,
   floorName,
+  floorId,
   onBookSeat,
 }: BookingModalProps) {
   const [showQr, setShowQr] = useState(false);
@@ -37,8 +41,8 @@ export function BookingModal({
 
   const qrValue = JSON.stringify({
     seatId: seat.id,
-    room: roomName,
-    floor: floorName,
+    roomId,
+    floorId,
     timestamp: new Date().toISOString(),
   });
 

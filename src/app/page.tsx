@@ -2,13 +2,15 @@
 
 import * as React from 'react';
 import { useState, useMemo } from 'react';
-import { initialData, type Seat, type Room, type Floor } from '@/lib/data';
+import Link from 'next/link';
+import { useAppData } from '@/context/AppDataContext';
+import { type Seat } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { BookingModal } from '@/components/booking-modal';
-import { BookMarked, Armchair, Users, Building, ChevronRight } from 'lucide-react';
+import { BookMarked, Armchair, Users, Building, ChevronRight, QrCode } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -67,9 +69,9 @@ const SeatComponent = ({
 };
 
 export default function StudyPlacePage() {
-  const [floors, setFloors] = useState<Floor[]>(initialData);
-  const [selectedFloorId, setSelectedFloorId] = useState<string>(initialData[0].id);
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(initialData[0].rooms[0].id);
+  const { floors, bookSeat } = useAppData();
+  const [selectedFloorId, setSelectedFloorId] = useState<string>(floors[0].id);
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(floors[0].rooms[0].id);
   const [bookingSeat, setBookingSeat] = useState<Seat | null>(null);
   const { toast } = useToast();
 
@@ -93,24 +95,8 @@ export default function StudyPlacePage() {
   };
 
   const handleBookSeat = (seatToBook: Seat) => {
-    const newFloors = floors.map((floor) => ({
-      ...floor,
-      rooms: floor.rooms.map((room) => ({
-        ...room,
-        seats: room.seats.map((seat) => {
-          if (seat.id === seatToBook.id && room.id === selectedRoomId) {
-            return {
-              ...seat,
-              status: 'reserved' as const,
-              user: 'You',
-              reservedUntil: new Date(new Date().getTime() + 2 * 60 * 60 * 1000), // 2 hours from now
-            };
-          }
-          return seat;
-        }),
-      })),
-    }));
-    setFloors(newFloors);
+    if (!selectedRoomId) return;
+    bookSeat(seatToBook, selectedRoomId);
     setBookingSeat(null);
     toast({
       title: "Seat Reserved!",
@@ -121,9 +107,17 @@ export default function StudyPlacePage() {
   return (
     <TooltipProvider>
       <div className="flex flex-col min-h-screen bg-background text-foreground">
-        <header className="flex items-center gap-4 p-4 border-b border-border">
-          <BookMarked className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-headline text-primary">StudyPlace</h1>
+        <header className="flex items-center justify-between p-4 border-b border-border">
+          <div className="flex items-center gap-4">
+            <BookMarked className="h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-headline text-primary">StudyPlace</h1>
+          </div>
+          <Link href="/check-in" passHref>
+            <Button variant="outline">
+              <QrCode className="mr-2 h-4 w-4" />
+              Check-in
+            </Button>
+          </Link>
         </header>
 
         <main className="flex-1 p-4 sm:p-6 md:p-8 space-y-8">
@@ -212,8 +206,10 @@ export default function StudyPlacePage() {
           isOpen={!!bookingSeat}
           onOpenChange={(open) => !open && setBookingSeat(null)}
           seat={bookingSeat}
-          roomName={selectedRoom?.name || ''}
           floorName={selectedFloor?.name || ''}
+          floorId={selectedFloor?.id || ''}
+          roomName={selectedRoom?.name || ''}
+          roomId={selectedRoom?.id || ''}
           onBookSeat={handleBookSeat}
         />
       </div>
