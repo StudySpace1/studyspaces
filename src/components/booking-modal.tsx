@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import QRCode from 'qrcode.react';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,6 +37,13 @@ export function BookingModal({
 }: BookingModalProps) {
   const [showQr, setShowQr] = useState(false);
 
+  useEffect(() => {
+    if (!isOpen) {
+      // Reset QR state after modal closes to ensure it doesn't show up on reopen
+      setTimeout(() => setShowQr(false), 300);
+    }
+  }, [isOpen]);
+
   if (!seat) return null;
 
   const qrValue = JSON.stringify({
@@ -50,15 +57,9 @@ export function BookingModal({
     onBookSeat(seat);
     setShowQr(true);
   };
-  
-  const handleClose = () => {
-    onOpenChange(false);
-    // Reset QR state after modal closes
-    setTimeout(() => setShowQr(false), 300);
-  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="font-headline text-2xl text-primary">
@@ -107,7 +108,7 @@ export function BookingModal({
 
         <DialogFooter>
           {showQr ? (
-            <Button onClick={handleClose} className="w-full">
+            <Button onClick={() => onOpenChange(false)} className="w-full">
               Close
             </Button>
           ) : (

@@ -97,7 +97,6 @@ export default function StudyPlacePage() {
   const handleBookSeat = (seatToBook: Seat) => {
     if (!selectedRoomId) return;
     bookSeat(seatToBook, selectedRoomId);
-    setBookingSeat(null);
     toast({
       title: "Seat Reserved!",
       description: `You have successfully reserved seat ${seatToBook.id}.`,
