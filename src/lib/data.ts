@@ -1,6 +1,6 @@
 export type Seat = {
   id: string;
-  status: 'free' | 'occupied' | 'reserved';
+  status: 'free' | 'occupied' ;
   user?: string;
   reservedUntil?: Date;
 };
@@ -41,7 +41,7 @@ export const initialData: Floor[] = [
           { id: '1C', status: 'free' },
           { id: '1D', status: 'free' },
           { id: '2A', status: 'free' },
-          { id: '2B', status: 'reserved', user: 'Beth' },
+          { id: '2B', status: 'occupied', user: 'Beth' },
           { id: '2C', status: 'free' },
           { id: '2D', status: 'occupied', user: 'Charlie' },
         ],
@@ -100,7 +100,7 @@ export const initialData: Floor[] = [
           { id: '4B', status: 'free' },
           { id: '4C', status: 'occupied', user: 'Eve' },
           { id: '4D', status: 'free' },
-          { id: '5A', status: 'reserved', user: 'Frank' },
+          { id: '5A', status: 'free', user: 'Frank' },
           { id: '5B', status: 'free' },
           { id: '5C', status: 'free' },
           { id: '5D', status: 'free' },
