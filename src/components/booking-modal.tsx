@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode.react';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,7 +12,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { type Seat } from '@/lib/data';
-import { Armchair, Building, DoorOpen, QrCode, CheckCircle } from 'lucide-react';
+import { Armchair, Building, DoorOpen, QrCode, CheckCircle, Download } from 'lucide-react';
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -36,6 +36,7 @@ export function BookingModal({
   onBookSeat,
 }: BookingModalProps) {
   const [showQr, setShowQr] = useState(false);
+  const qrCodeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -58,6 +59,23 @@ export function BookingModal({
     setShowQr(true);
   };
 
+  const handleDownload = () => {
+    if (qrCodeRef.current) {
+        const canvas = qrCodeRef.current.querySelector('canvas');
+        if (canvas) {
+            const pngUrl = canvas
+                .toDataURL("image/png")
+                .replace("image/png", "image/octet-stream");
+            const downloadLink = document.createElement("a");
+            downloadLink.href = pngUrl;
+            downloadLink.download = `seat-${seat.id}-qrcode.png`;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
@@ -67,7 +85,7 @@ export function BookingModal({
           </DialogTitle>
           <DialogDescription>
              {showQr
-              ? 'Show this QR code to check in.'
+              ? 'Show this QR code to check in or download it for later.'
               : `You are about to reserve seat ${seat.id}.`}
           </DialogDescription>
         </DialogHeader>
@@ -75,7 +93,7 @@ export function BookingModal({
         {showQr ? (
           <div className="flex flex-col items-center justify-center py-8 gap-6">
             <CheckCircle className="w-16 h-16 text-green-500" />
-            <div className="p-4 bg-white rounded-lg">
+            <div ref={qrCodeRef} className="p-4 bg-white rounded-lg">
                 <QRCode value={qrValue} size={200} />
             </div>
             <p className="font-bold text-lg">Seat {seat.id}</p>
@@ -108,9 +126,15 @@ export function BookingModal({
 
         <DialogFooter>
           {showQr ? (
-            <Button onClick={() => onOpenChange(false)} className="w-full">
-              Close
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Close
+              </Button>
+              <Button onClick={handleDownload}>
+                <Download className="mr-2 h-4 w-4" />
+                Download
+              </Button>
+            </>
           ) : (
             <>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
